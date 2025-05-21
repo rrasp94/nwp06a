@@ -2,27 +2,21 @@
 #include "rc.h"
 #include <stdexcept>
 
-int x = 8;
-int y = 8;
-COLORREF color = RGB(33, 33, 33);
+COLORREF main_window::get_color(HWND parent, COLORREF current_color) {
+	CHOOSECOLOR cc = {};
+	COLORREF acrCustClr[16] = {};
 
-COLORREF get_color(HWND parent) {
-	CHOOSECOLOR cc;
-	static COLORREF acrCustClr[16];
-	static DWORD rgbCurrent = RGB(33, 33, 33); 
-
-	ZeroMemory(&cc, sizeof(cc));
 	cc.lStructSize = sizeof(cc);
 	cc.hwndOwner = parent;
-	cc.lpCustColors = (LPDWORD)acrCustClr;
-	cc.rgbResult = rgbCurrent;
+	cc.lpCustColors = acrCustClr;
+	cc.rgbResult = current_color;
 	cc.Flags = CC_FULLOPEN | CC_RGBINIT;
 
 	if (ChooseColor(&cc) == TRUE) {
-		rgbCurrent = cc.rgbResult;
+		return cc.rgbResult;
 	}
 
-	return rgbCurrent;
+	return current_color;
 }
 
 int size_dialog::idd() const {
@@ -61,11 +55,11 @@ void main_window::on_paint(HDC hdc) {
 
 	SetMapMode(hdc, MM_ANISOTROPIC);
 	SetViewportExtEx(hdc, clientRect.right, clientRect.bottom, 0);
-	SetWindowExtEx(hdc, x * 2, y * 2, 0);
+	SetWindowExtEx(hdc, x, y, 0);
 
-	for (int i = 0; i < x * 2; i += 2) {
-		for (int j = ((i / 2) % 2) * 2; j < y * 2; j += 4) {
-			RECT r = { i, j, i + 2, j + 2 };
+	for (int i = 0; i < x; ++i) {
+		for (int j = (i % 2); j < y; j += 2) {
+			RECT r = { i, j, i + 1, j + 1 };
 			FillRect(hdc, &r, brush);
 		}
 	}
@@ -73,22 +67,26 @@ void main_window::on_paint(HDC hdc) {
 	DeleteObject(brush);
 }
 
-void main_window::on_command(int id){
-	switch(id){
-		case ID_SIZE: {
-			size_dialog s_dlg;
-			if (s_dlg.do_modal(0, *this) == IDOK) {
-				InvalidateRect(*this, NULL, true);
-			}
-			break;
-		}
-		case ID_COLOR:
-			color = get_color(*this);
+void main_window::on_command(int id) {
+	switch (id) {
+	case ID_SIZE: {
+		size_dialog dlg;
+		dlg.x = x;
+		dlg.y = y;
+		if (dlg.do_modal(0, *this) == IDOK) {
+			x = dlg.x;
+			y = dlg.y;
 			InvalidateRect(*this, NULL, true);
-			break;
-		case ID_EXIT: 
-			DestroyWindow(*this); 
-			break;
+		}
+		break;
+	}
+	case ID_COLOR:
+		color = get_color(*this, color);
+		InvalidateRect(*this, NULL, true);
+		break;
+	case ID_EXIT:
+		DestroyWindow(*this);
+		break;
 	}
 }
 
